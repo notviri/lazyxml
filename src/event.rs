@@ -5,8 +5,6 @@ pub enum Event<'src> {
     EmptyTag(Tag<'src>),
 
     Text(Text<'src>),
-
-    Eof,
 }
 
 #[derive(Debug)]

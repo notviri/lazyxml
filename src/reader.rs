@@ -71,6 +71,7 @@ enum ReaderState {
 }
 
 impl<'src> Reader<'src> {
+    /// Constructs a new [`Reader`] from ASCII-compatible XML bytes.
     pub const fn new(xml: &'src [u8]) -> Self {
         Self {
             state: ReaderState::Searching,
@@ -82,21 +83,14 @@ impl<'src> Reader<'src> {
     }
 
     /// Enables or disables trimming whitespace in [`Text`] events.
+    ///
     /// This property is dynamic and can be turned on and off while parsing.
     pub fn trim_whitespace(&mut self, trim: bool) -> &mut Self {
         self.trim = trim;
         self
     }
 
-    pub fn next(&mut self) -> Result<Event<'src>, Error> {
-        match self.state {
-            ReaderState::Searching => self.next_search(),
-            ReaderState::LocatedTag => self.next_tag(),
-            ReaderState::End => Ok(Event::Eof),
-        }
-    }
-
-    fn next_search(&mut self) -> Result<Event<'src>, Error> {
+    fn next_search(&mut self) -> Option<Result<Event<'src>, Error>> {
         let source = sl(self.source, self.source_pos);
         let mut text = match memchr(b'<', source) {
             Some(idx) => {
@@ -115,15 +109,19 @@ impl<'src> Reader<'src> {
             text = trim(text);
         }
         if !text.is_empty() {
-            Ok(Event::Text(Text::new(text)))
+            Some(Ok(Event::Text(Text::new(text))))
         } else {
             self.next()
         }
     }
 
-    fn next_tag(&mut self) -> Result<Event<'src>, Error> {
+    fn next_tag(&mut self) -> Option<Result<Event<'src>, Error>> {
         let source = sl(self.source, self.source_pos);
-        match source.get(0).ok_or_else(|| Error::UnexpectedEof(self.source_pos))? {
+        let first_char = match source.get(0) {
+            Some(ch) => ch,
+            None => return Some(Err(Error::UnexpectedEof(self.source_pos))),
+        };
+        match first_char {
             b'!' => todo!("bang"),
             b'?' => todo!("pi"),
 
@@ -159,7 +157,8 @@ impl<'src> Reader<'src> {
                         // Trim `/` of `</` in closing tags.
                         if is_closing_tag {
                             if head.is_empty() {
-                                return Err(Error::InvalidName(self.source_pos - 1)) // `</>`
+                                // A strange case of `</>` would lead here.
+                                return Some(Err(Error::InvalidName(self.source_pos - 1)))
                             } else {
                                 head = sl(head, 1);
                             }
@@ -170,19 +169,31 @@ impl<'src> Reader<'src> {
                             self.source_pos += idx + 1;
                             self.state = ReaderState::Searching;
                             if is_closing_tag {
-                                Ok(Event::CloseTag(Tag::new(head, tail)))
+                                Some(Ok(Event::CloseTag(Tag::new(head, tail))))
                             } else if is_empty_tag {
-                                Ok(Event::EmptyTag(Tag::new(head, tail)))
+                                Some(Ok(Event::EmptyTag(Tag::new(head, tail))))
                             } else {
-                                Ok(Event::OpenTag(Tag::new(head, tail)))
+                                Some(Ok(Event::OpenTag(Tag::new(head, tail))))
                             }
                         } else {
-                            Err(Error::InvalidName(self.source_pos - 1))
+                            Some(Err(Error::InvalidName(self.source_pos - 1)))
                         }
                     },
-                    None => Err(Error::UnexpectedEof(self.source_pos + self.source.len() - 1)),
+                    None => Some(Err(Error::UnexpectedEof(self.source_pos + self.source.len() - 1))),
                 }
             },
+        }
+    }
+}
+
+impl<'src> Iterator for Reader<'src> {
+    type Item = Result<Event<'src>, Error>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.state {
+            ReaderState::Searching => self.next_search(),
+            ReaderState::LocatedTag => self.next_tag(),
+            ReaderState::End => None,
         }
     }
 }
