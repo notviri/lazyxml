@@ -10,10 +10,12 @@ pub enum Error {
     /// Examples: `<>`, `< >`, `</>`, `<//>`, `<///>`, `<0Name>`, `<.Name>`, etc.
     InvalidName(usize),
 
-    /// Unexpected end of file was met at (offset) while reading.
+    /// Unexpected end of file was met while reading a tag or attribute.
     ///
-    /// Examples: `<`, `<Name`, `<Name a="1"`.
-    UnexpectedEof(usize),
+    /// Attribute checks are only done by attribute iterators.
+    ///
+    /// Examples: `<`, `<Name`, `<Name a="1`, `<Name a="1"`.
+    UnexpectedEof,
 }
 
 #[cfg(test)]

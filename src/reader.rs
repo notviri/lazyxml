@@ -124,7 +124,7 @@ impl<'xml> Reader<'xml> {
         let source = sl(self.source, self.source_pos);
         let first_char = match source.get(0) {
             Some(ch) => ch,
-            None => return Some(Err(Error::UnexpectedEof(self.source_pos))),
+            None => return Some(Err(Error::UnexpectedEof)),
         };
         match first_char {
             b'!' => todo!("bang"),
@@ -184,7 +184,7 @@ impl<'xml> Reader<'xml> {
                             Some(Err(Error::InvalidName(self.source_pos - 1)))
                         }
                     },
-                    None => Some(Err(Error::UnexpectedEof(self.source_pos + self.source.len() - 1))),
+                    None => Some(Err(Error::UnexpectedEof)),
                 }
             },
         }
