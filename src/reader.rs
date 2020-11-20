@@ -85,6 +85,8 @@ impl<'xml> Reader<'xml> {
     /// Enables or disables trimming whitespace in [`Text`] events.
     ///
     /// This property is dynamic and can be turned on and off while parsing.
+    ///
+    /// Defaults to enabled (`true`).
     pub fn trim_whitespace(&mut self, trim: bool) -> &mut Self {
         self.trim = trim;
         self

@@ -1,7 +1,5 @@
 pub mod event;
-
-mod reader;
-pub use reader::Reader;
+pub mod reader;
 
 #[derive(Debug)]
 pub enum Error {
