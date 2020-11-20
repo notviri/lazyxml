@@ -8,6 +8,7 @@ Really lazy stupid XML parsing. Happily looks past completely invalid XML, as lo
 
 1) You are looking to be as ***lazy*** as ActionScript's `XMLDocument` class, which is what this crate's purpose for existing is.
 2) Your data is already validated, but then you should ask yourself why you're still transporting it in XML of all things.
+3) You are a performance freak.
 
 ## Usage
 
