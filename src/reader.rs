@@ -90,6 +90,11 @@ impl<'src> Reader<'src> {
         self
     }
 
+    /// Gets the byte offset from the start of the input.
+    pub fn offset(&self) -> usize {
+        self.source_pos
+    }
+
     fn next_search(&mut self) -> Option<Result<Event<'src>, Error>> {
         let source = sl(self.source, self.source_pos);
         let mut text = match memchr(b'<', source) {
