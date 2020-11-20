@@ -132,6 +132,7 @@ impl<'src> Reader<'src> {
                 let is_closing_tag = *first == b'/';
                 match memchr(b'>', source) {
                     Some(idx) => {
+                        // The inner content is the entire slice <[between]> the angle brackets.
                         let inner = sl_end(source, idx);
 
                         // Separate head & tail (tag name, attributes chunk).
@@ -139,7 +140,7 @@ impl<'src> Reader<'src> {
                         // (head, tail) of `<Name />` is <[Name] []/>
                         // (head, tail) of `<Name/>` is <[Name][]/>
                         let (mut head, mut tail) = match inner.iter().position(|&ch| ch <= b' ') {
-                            Some(ws) => (sl_end(inner, ws), sl(inner, ws + 1)), // todo chk
+                            Some(space) => (sl_end(inner, space), sl(inner, space + 1)),
                             None => (inner, &[][..]),
                         };
 
@@ -149,9 +150,9 @@ impl<'src> Reader<'src> {
                             // Note: Yes, this permits `</Name/>` on purpose as a closing tag.
                             // You *could* fix that with checking `is_closing_tag`.
                             if tail.is_empty() {
-                                head = &head[..head.len() - 1]; // TODO: can this fail
+                                head = sl(head, head.len() - 1);
                             } else {
-                                tail = &tail[..tail.len() - 1]; // TODO: can this fail
+                                tail = sl(tail, tail.len() - 1);
                             }
                         }
 
@@ -160,7 +161,7 @@ impl<'src> Reader<'src> {
                             if head.is_empty() {
                                 return Err(Error::InvalidName(self.source_pos - 1)) // `</>`
                             } else {
-                                head = &head[1..]; // todo #232
+                                head = sl(head, 1);
                             }
                         }
 
@@ -179,7 +180,7 @@ impl<'src> Reader<'src> {
                             Err(Error::InvalidName(self.source_pos - 1))
                         }
                     },
-                    None => Err(Error::UnexpectedEof(self.source_pos - 1)),
+                    None => Err(Error::UnexpectedEof(self.source_pos + self.source.len() - 1)),
                 }
             },
         }
