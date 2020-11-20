@@ -15,3 +15,4 @@ include = ["src/**/*.rs", "Cargo.toml"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+memchr = "2.3"
