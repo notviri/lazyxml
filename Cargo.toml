@@ -1,7 +1,17 @@
 [package]
 name = "lazyxml"
-version = "0.1.0"
+version = "0.0.1"
 authors = ["viri <hi@viri.moe>"]
 edition = "2018"
+description = "it's like xml parsing, but bad"
+documentation = "https://docs.rs/lazyxml"
+readme = "README.md"
+# homepage = "https://some.website/lazyxml"
+repository = "https://github.com/notviri/lazyxml/"
+license = "Zlib"
+# keywords = []
+# categories = []
+include = ["src/**/*.rs", "Cargo.toml"]
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
