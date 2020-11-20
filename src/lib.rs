@@ -3,6 +3,10 @@ mod reader;
 
 pub use reader::Reader;
 
+pub enum Error {
+    No,
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
