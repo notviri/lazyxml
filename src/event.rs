@@ -1,32 +1,32 @@
 #[derive(Debug)]
-pub enum Event<'src> {
-    OpenTag(Tag<'src>),
-    CloseTag(Tag<'src>),
-    EmptyTag(Tag<'src>),
+pub enum Event<'xml> {
+    OpenTag(Tag<'xml>),
+    CloseTag(Tag<'xml>),
+    EmptyTag(Tag<'xml>),
 
-    Text(Text<'src>),
+    Text(Text<'xml>),
 }
 
 #[derive(Debug)]
-pub struct Tag<'src> {
-    content: &'src [u8],
-    name: &'src [u8],
+pub struct Tag<'xml> {
+    content: &'xml [u8],
+    name: &'xml [u8],
 }
 
 #[derive(Debug)]
-pub struct Text<'src> {
-    content: &'src [u8],
+pub struct Text<'xml> {
+    content: &'xml [u8],
 }
 
-impl<'src> Tag<'src> {
-    pub(crate) const fn new(name: &'src [u8], content: &'src [u8]) -> Self {
+impl<'xml> Tag<'xml> {
+    pub(crate) const fn new(name: &'xml [u8], content: &'xml [u8]) -> Self {
         Self { content, name }
     }
 }
 
-impl<'src> Text<'src> {
+impl<'xml> Text<'xml> {
     #[inline]
-    pub(crate) const fn new(content: &'src [u8]) -> Self {
+    pub(crate) const fn new(content: &'xml [u8]) -> Self {
         Self { content }
     }
 }

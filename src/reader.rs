@@ -49,10 +49,10 @@ fn trim(text: &[u8]) -> &[u8] {
         .unwrap_or(b"")
 }
 
-pub struct Reader<'src> {
+pub struct Reader<'xml> {
     // State
     state: ReaderState,
-    source: &'src [u8],
+    source: &'xml [u8],
     source_pos: usize,
 
     // Settings
@@ -70,9 +70,9 @@ enum ReaderState {
     End,
 }
 
-impl<'src> Reader<'src> {
+impl<'xml> Reader<'xml> {
     /// Constructs a new [`Reader`] from ASCII-compatible XML bytes.
-    pub const fn new(xml: &'src [u8]) -> Self {
+    pub const fn new(xml: &'xml [u8]) -> Self {
         Self {
             state: ReaderState::Searching,
             source: xml,
@@ -95,7 +95,7 @@ impl<'src> Reader<'src> {
         self.source_pos
     }
 
-    fn next_search(&mut self) -> Option<Result<Event<'src>, Error>> {
+    fn next_search(&mut self) -> Option<Result<Event<'xml>, Error>> {
         let source = sl(self.source, self.source_pos);
         let mut text = match memchr(b'<', source) {
             Some(idx) => {
@@ -120,7 +120,7 @@ impl<'src> Reader<'src> {
         }
     }
 
-    fn next_tag(&mut self) -> Option<Result<Event<'src>, Error>> {
+    fn next_tag(&mut self) -> Option<Result<Event<'xml>, Error>> {
         let source = sl(self.source, self.source_pos);
         let first_char = match source.get(0) {
             Some(ch) => ch,
@@ -191,8 +191,8 @@ impl<'src> Reader<'src> {
     }
 }
 
-impl<'src> Iterator for Reader<'src> {
-    type Item = Result<Event<'src>, Error>;
+impl<'xml> Iterator for Reader<'xml> {
+    type Item = Result<Event<'xml>, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.state {
