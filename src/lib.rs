@@ -1,3 +1,4 @@
+mod event;
 mod reader;
 
 pub use reader::Reader;
