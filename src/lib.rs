@@ -1,3 +1,7 @@
+mod reader;
+
+pub use reader::Reader;
+
 #[cfg(test)]
 mod tests {
     #[test]
