@@ -63,7 +63,7 @@ enum ReaderState {
     /// The reader isn't particularly on anything. It's looking for text or tags.
     Searching,
 
-    /// The reader is on top of a tag's opening angle bracket (`<`).
+    /// The reader is on top of a tag (one past the opening angle bracket `<`).
     LocatedTag,
 
     /// The source has reached end of file.
