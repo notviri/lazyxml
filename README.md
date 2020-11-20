@@ -1,6 +1,6 @@
 # lazyxml
 
-![Crates.io](https://img.shields.io/crates/v/lazyxml)
+[![Crates.io](https://img.shields.io/crates/v/lazyxml)](https://crates.io/crates/lazyxml)
 [![Docs.rs](https://docs.rs/lazyxml/badge.svg)](https://docs.rs/lazyxml)
 [![GitHub license](https://img.shields.io/github/license/notviri/lazyxml)](https://github.com/notviri/lazyxml/blob/master/LICENSE.md)
 
