@@ -141,12 +141,13 @@ impl<'xml> Iterator for AttributeIter<'xml, [u8]> {
     fn next(&mut self) -> Option<Self::Item> {
         let mut source = sl(self.content, self.offset);
 
-        // Ignore preceding whitespace (happens between attributes too)
+        // Ignore preceding whitespace (happens between attributes too, sometimes*).
+        // * The standard actually requires it but we don't care.
         self.offset += source.iter().position(|&ch| ch > b' ')?;
         source = sl(self.content, self.offset);
 
         // Find `=` key/value separator
-        let sep_offset= match memchr(b'=', source) {
+        let sep_offset = match memchr(b'=', source) {
             Some(sep) => sep,
             None => return Some(Err(Error::UnexpectedEof)),
         };
