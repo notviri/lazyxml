@@ -225,7 +225,7 @@ impl<'xml, T> Reader<'xml, T> {
     }
 
     /// Gets the byte offset from the start of the input.
-    pub fn offset(&self) -> usize {
+    pub const fn offset(&self) -> usize {
         self.offset
     }
 }
@@ -288,7 +288,7 @@ impl<'xml> Reader<'xml, [u8]> {
                         // Separate head & tail (tag name, attributes chunk).
                         // (head, tail) of `<Name a="1"/>` is <[Name] [a="1"]/>
                         // (head, tail) of `<Name />` is <[Name] []/>
-                        // (head, tail) of `<Name/>` is <[Name][]/>
+                        // (head, tail) of `<Name/>` is <[Name/][]>
                         let (mut head, mut tail) = match inner.iter().position(|&ch| ch <= b' ') {
                             Some(space) => (sl_end(inner, space), sl(inner, space + 1)),
                             None => (inner, &[][..]),
