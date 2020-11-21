@@ -54,7 +54,7 @@ pub struct Reader<'xml, T: ?Sized> {
     // State
     state: ReaderState,
     source: &'xml T,
-    source_pos: usize,
+    offset: usize,
 
     // Settings
     trim: bool,
@@ -77,7 +77,7 @@ impl<'xml, T> Reader<'xml, T> {
         Reader {
             state: ReaderState::Searching,
             source: xml,
-            source_pos: 0,
+            offset: 0,
 
             trim: true,
         }
@@ -88,7 +88,7 @@ impl<'xml, T> Reader<'xml, T> {
         Reader {
             state: ReaderState::Searching,
             source: xml,
-            source_pos: 0,
+            offset: 0,
 
             trim: true,
         }
@@ -106,18 +106,18 @@ impl<'xml, T> Reader<'xml, T> {
 
     /// Gets the byte offset from the start of the input.
     pub fn offset(&self) -> usize {
-        self.source_pos
+        self.offset
     }
 }
 
 impl<'xml> Reader<'xml, [u8]> {
     fn next_search(&mut self) -> Option<Result<Event<'xml, [u8]>, Error>> {
-        let source = sl(self.source, self.source_pos);
+        let source = sl(self.source, self.offset);
         let mut text = match memchr(b'<', source) {
             Some(idx) => {
                 // We move 1 byte past '<' as we know that's what it is.
                 // This makes next access be worst-case &[] (safe).
-                self.source_pos += idx + 1;
+                self.offset += idx + 1;
                 self.state = ReaderState::LocatedTag;
                 sl_end(source, idx)
             },
@@ -137,7 +137,7 @@ impl<'xml> Reader<'xml, [u8]> {
     }
 
     fn next_tag(&mut self) -> Option<Result<Event<'xml, [u8]>, Error>> {
-        let source = sl(self.source, self.source_pos);
+        let source = sl(self.source, self.offset);
         let first_char = match source.get(0) {
             Some(ch) => ch,
             None => return Some(Err(Error::UnexpectedEof)),
@@ -179,7 +179,7 @@ impl<'xml> Reader<'xml, [u8]> {
                         if is_closing_tag {
                             if head.is_empty() {
                                 // A strange case of `</>` would lead here.
-                                return Some(Err(Error::InvalidName(self.source_pos - 1)))
+                                return Some(Err(Error::InvalidName(self.offset - 1)))
                             } else {
                                 head = sl(head, 1);
                             }
@@ -187,7 +187,7 @@ impl<'xml> Reader<'xml, [u8]> {
 
                         // Yield tag if name is valid.
                         if is_valid_tag_name(head) {
-                            self.source_pos += idx + 1;
+                            self.offset += idx + 1;
                             self.state = ReaderState::Searching;
                             if is_closing_tag {
                                 Some(Ok(Event::CloseTag(Tag::new(head, tail))))
@@ -197,7 +197,7 @@ impl<'xml> Reader<'xml, [u8]> {
                                 Some(Ok(Event::OpenTag(Tag::new(head, tail))))
                             }
                         } else {
-                            Some(Err(Error::InvalidName(self.source_pos - 1)))
+                            Some(Err(Error::InvalidName(self.offset - 1)))
                         }
                     },
                     None => Some(Err(Error::UnexpectedEof)),
