@@ -100,7 +100,7 @@ fn sl(s: &[u8], x: usize) -> &[u8] {
     unsafe { s.get_unchecked(x..) }
 }
 #[inline]
-fn sl_end(s: &[u8], x: usize) -> &[u8] {
+fn sl_to(s: &[u8], x: usize) -> &[u8] {
     unsafe { s.get_unchecked(..x) }
 }
 
@@ -155,7 +155,7 @@ impl<'xml> Iterator for AttributeIter<'xml, [u8]> {
         self.offset += sep_offset;
 
         // Trim whitespace around key so a="1" and a = "1" behave the same
-        let key = trim_whitespace(sl_end(source, sep_offset));
+        let key = trim_whitespace(sl_to(source, sep_offset));
         if key.is_empty() {
             return Some(Err(Error::InvalidAttribute(initial_offset)))
         }
@@ -178,7 +178,7 @@ impl<'xml> Iterator for AttributeIter<'xml, [u8]> {
         // Yield key & value if available.
         match memchr(quote_char, source) {
             Some(end) => {
-                let value = sl_end(source, end);
+                let value = sl_to(source, end);
                 self.offset += end + 1; // past the closing quote
                 Some(Ok(Attribute::new(key, value)))
             },
@@ -250,7 +250,7 @@ impl<'xml> Reader<'xml, [u8]> {
                 // This makes next access be worst-case &[] (safe).
                 self.offset += idx + 1;
                 self.state = ReaderState::LocatedTag;
-                sl_end(source, idx)
+                sl_to(source, idx)
             },
             None => {
                 self.state = ReaderState::End;
@@ -283,14 +283,14 @@ impl<'xml> Reader<'xml, [u8]> {
                 match memchr(b'>', source) {
                     Some(idx) => {
                         // The inner content is the entire slice <[between]> the angle brackets.
-                        let inner = sl_end(source, idx);
+                        let inner = sl_to(source, idx);
 
                         // Separate head & tail (tag name, attributes chunk).
                         // (head, tail) of `<Name a="1"/>` is <[Name] [a="1"]/>
                         // (head, tail) of `<Name />` is <[Name] []/>
                         // (head, tail) of `<Name/>` is <[Name/][]>
                         let (mut head, mut tail) = match inner.iter().position(|&ch| ch <= b' ') {
-                            Some(space) => (sl_end(inner, space), sl(inner, space + 1)),
+                            Some(space) => (sl_to(inner, space), sl(inner, space + 1)),
                             None => (inner, &[][..]),
                         };
 
@@ -300,9 +300,9 @@ impl<'xml> Reader<'xml, [u8]> {
                             // Note: Yes, this permits `</Name/>` on purpose as a closing tag.
                             // You *could* fix that with checking `is_closing_tag`.
                             if tail.is_empty() {
-                                head = sl(head, head.len() - 1);
+                                head = sl_to(head, head.len() - 1);
                             } else {
-                                tail = sl(tail, tail.len() - 1);
+                                tail = sl_to(tail, tail.len() - 1);
                             }
                         }
 
