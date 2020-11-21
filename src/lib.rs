@@ -253,6 +253,11 @@ impl<'xml> Reader<'xml, str> {
             trim: true,
         }
     }
+
+    /// Constructs a new [`Reader`] from a UTF-8 string, stripping the BOM if it's present.
+    pub fn from_str_bom(xml: &'xml str) -> Reader<'xml, str> {
+        Self::from_str(xml.trim_start_matches('\u{feff}'))
+    }
 }
 
 impl<'xml> Iterator for Reader<'xml, [u8]> {
