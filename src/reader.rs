@@ -72,28 +72,6 @@ enum ReaderState {
 }
 
 impl<'xml, T> Reader<'xml, T> {
-    /// Constructs a new [`Reader`] from ASCII-compatible XML bytes.
-    pub const fn new(xml: &'xml [u8]) -> Reader<'xml, [u8]> {
-        Reader {
-            state: ReaderState::Searching,
-            source: xml,
-            offset: 0,
-
-            trim: true,
-        }
-    }
-
-    /// Constructs a new [`Reader`] from a UTF-8 string.
-    pub const fn from_str(xml: &'xml str) -> Reader<'xml, str> {
-        Reader {
-            state: ReaderState::Searching,
-            source: xml,
-            offset: 0,
-
-            trim: true,
-        }
-    }
-
     /// Enables or disables trimming whitespace in [`Text`] events.
     ///
     /// This property is dynamic and can be turned on and off while parsing.
@@ -111,6 +89,17 @@ impl<'xml, T> Reader<'xml, T> {
 }
 
 impl<'xml> Reader<'xml, [u8]> {
+    /// Constructs a new [`Reader`] from ASCII-compatible XML bytes.
+    pub const fn from_bytes(xml: &'xml [u8]) -> Reader<'xml, [u8]> {
+        Reader {
+            state: ReaderState::Searching,
+            source: xml,
+            offset: 0,
+
+            trim: true,
+        }
+    }
+
     fn next_search(&mut self) -> Option<Result<Event<'xml, [u8]>, Error>> {
         let source = sl(self.source, self.offset);
         let mut text = match memchr(b'<', source) {
@@ -203,6 +192,19 @@ impl<'xml> Reader<'xml, [u8]> {
                     None => Some(Err(Error::UnexpectedEof)),
                 }
             },
+        }
+    }
+}
+
+impl<'xml> Reader<'xml, str> {
+    /// Constructs a new [`Reader`] from a UTF-8 string.
+    pub const fn from_str(xml: &'xml str) -> Reader<'xml, str> {
+        Reader {
+            state: ReaderState::Searching,
+            source: xml,
+            offset: 0,
+
+            trim: true,
         }
     }
 }
