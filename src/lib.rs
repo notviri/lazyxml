@@ -1,4 +1,4 @@
-use memchr::memchr;
+use memchr::{memchr, memchr2};
 use std::mem;
 
 #[derive(Debug)]
@@ -8,11 +8,18 @@ pub enum Error {
     /// Examples: `<>`, `< >`, `</>`, `<//>`, `<///>`, `<0Name>`, `<.Name>`, etc.
     InvalidName(usize),
 
+    /// Attribute is malformed.
+    ///
+    /// Offset is relative to the [`Tag`]'s content chunk.
+    ///
+    /// Examples: `<Name a>`, `<Name a= >`, `<Name ="1">`, `<Name a=1>`.
+    InvalidAttribute(usize),
+
     /// Unexpected end of file was met while reading a tag or attribute.
     ///
     /// Attribute checks are only done by attribute iterators.
     ///
-    /// Examples: `<`, `<Name`, `<Name a="1`, `<Name a="1"`.
+    /// Examples: `<`, `<Name`, `<Name a`, `<Name a=`, `<Name a="1`, `<Name a="1"`.
     UnexpectedEof,
 }
 
@@ -31,6 +38,17 @@ pub struct Tag<'xml, T: ?Sized> {
     name: &'xml T,
 }
 
+pub struct AttributeIter<'xml, T: ?Sized> {
+    content: &'xml T,
+    offset: usize,
+}
+
+#[derive(Debug)]
+pub struct Attribute<'xml, T: ?Sized> {
+    pub key: &'xml T,
+    pub value: &'xml T,
+}
+
 #[derive(Debug)]
 pub struct Text<'xml, T: ?Sized> {
     content: &'xml T,
@@ -46,7 +64,6 @@ pub struct Reader<'xml, T: ?Sized> {
     trim: bool,
 }
 
-
 enum ReaderState {
     /// The reader isn't particularly on anything. It's looking for text or tags.
     Searching,
@@ -58,8 +75,8 @@ enum ReaderState {
     End,
 }
 
-static IS_INVALID_NAME_START: [bool; 256] = lut_invalid_name_start();
-const fn lut_invalid_name_start() -> [bool; 256] {
+static IS_VALID_NAME_START: [bool; 256] = lut_name_start_chars();
+const fn lut_name_start_chars() -> [bool; 256] {
     let mut arr = [true; 256];
     let mut i = 0;
     while i < 256 {
@@ -98,7 +115,8 @@ fn trim_whitespace(text: &[u8]) -> &[u8] {
 #[inline]
 fn is_valid_tag_name(name: &[u8]) -> bool {
     match name.first().copied() {
-        Some(x) => IS_INVALID_NAME_START[x as usize], // no bounds check (u8 <= sizeof [])
+        // no bounds check is done with [] since the array is at least u8::max_value()
+        Some(x) => IS_VALID_NAME_START[x as usize],
         None => false, // empty, somehow
     }
 }
@@ -106,6 +124,82 @@ fn is_valid_tag_name(name: &[u8]) -> bool {
 impl<'xml, T: ?Sized> Tag<'xml, T> {
     pub(crate) const fn new(name: &'xml T, content: &'xml T) -> Self {
         Self { content, name }
+    }
+
+    /// Returns an iterator over the tag's attributes, if any.
+    pub const fn attributes(&self) -> AttributeIter<'xml, T> {
+        AttributeIter {
+            content: self.content,
+            offset: 0,
+        }
+    }
+}
+
+impl<'xml> Iterator for AttributeIter<'xml, [u8]> {
+    type Item = Result<Attribute<'xml, [u8]>, Error>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut source = sl(self.content, self.offset);
+
+        // Ignore preceding whitespace (happens between attributes too)
+        self.offset += source.iter().position(|&ch| ch > b' ')?;
+        source = sl(self.content, self.offset);
+
+        // Find `=` key/value separator
+        let sep_offset= match memchr(b'=', source) {
+            Some(sep) => sep,
+            None => return Some(Err(Error::UnexpectedEof)),
+        };
+        self.offset += sep_offset;
+
+        // Trim whitespace around key so a="1" and a = "1" behave the same
+        let key = trim_whitespace(sl_end(source, sep_offset));
+        if key.is_empty() {
+            return Some(Err(Error::InvalidAttribute(self.offset)))
+        }
+        self.offset += 1; // move past `=`
+
+        // Find starting quote, either `'` or `"`.
+        // Memchr is not used here because 99.999% it'll be offset 0 (a="1") or 1 (a = "1").
+        source = sl(self.content, self.offset);
+        let (offset, quote_char) = match source
+            .iter()
+            .enumerate()
+            .find(|&(ix, ch)| *ch == b'"' || *ch == b'\'')
+        {
+            Some((ix, ch)) => (ix, *ch),
+            None => return Some(Err(Error::InvalidAttribute(self.offset))),
+        };
+        self.offset += offset + 1; // past the quote
+        source = sl(self.content, self.offset);
+
+        // Yield key & value if available.
+        match memchr(quote_char, source) {
+            Some(end) => {
+                let value = sl_end(source, end);
+                self.offset += end + 1; // past the closing quote
+                Some(Ok(Attribute::new(key, value)))
+            },
+            None => Some(Err(Error::InvalidAttribute(self.offset))),
+        }
+    }
+}
+
+impl<'xml> Iterator for AttributeIter<'xml, str> {
+    type Item = Result<Attribute<'xml, str>, Error>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        // SAFETY: Identical layout, contents, and that's how the standard library does it too.
+        unsafe {
+            mem::transmute(mem::transmute::<_, &mut AttributeIter<'xml, [u8]>>(self).next())
+        }
+    }
+}
+
+impl<'xml, T: ?Sized> Attribute<'xml, T> {
+    pub(crate) const fn new(key: &'xml T, value: &'xml T) -> Self {
+        Self { key, value }
     }
 }
 
@@ -255,6 +349,7 @@ impl<'xml> Reader<'xml, str> {
     }
 
     /// Constructs a new [`Reader`] from a UTF-8 string, stripping the BOM if it's present.
+    #[inline]
     pub fn from_str_bom(xml: &'xml str) -> Reader<'xml, str> {
         Self::from_str(xml.trim_start_matches('\u{feff}'))
     }
