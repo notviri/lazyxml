@@ -140,6 +140,7 @@ impl<'xml> Iterator for AttributeIter<'xml, [u8]> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let mut source = sl(self.content, self.offset);
+        let initial_offset = self.offset;
 
         // Ignore preceding whitespace (happens between attributes too, sometimes*).
         // * The standard actually requires it but we don't care.
@@ -156,7 +157,7 @@ impl<'xml> Iterator for AttributeIter<'xml, [u8]> {
         // Trim whitespace around key so a="1" and a = "1" behave the same
         let key = trim_whitespace(sl_end(source, sep_offset));
         if key.is_empty() {
-            return Some(Err(Error::InvalidAttribute(self.offset)))
+            return Some(Err(Error::InvalidAttribute(initial_offset)))
         }
         self.offset += 1; // move past `=`
 
@@ -169,7 +170,7 @@ impl<'xml> Iterator for AttributeIter<'xml, [u8]> {
             .find(|&(ix, ch)| *ch == b'"' || *ch == b'\'')
         {
             Some((ix, ch)) => (ix, *ch),
-            None => return Some(Err(Error::InvalidAttribute(self.offset))),
+            None => return Some(Err(Error::InvalidAttribute(initial_offset))),
         };
         self.offset += offset + 1; // past the quote
         source = sl(self.content, self.offset);
@@ -181,7 +182,7 @@ impl<'xml> Iterator for AttributeIter<'xml, [u8]> {
                 self.offset += end + 1; // past the closing quote
                 Some(Ok(Attribute::new(key, value)))
             },
-            None => Some(Err(Error::InvalidAttribute(self.offset))),
+            None => Some(Err(Error::InvalidAttribute(initial_offset))),
         }
     }
 }
