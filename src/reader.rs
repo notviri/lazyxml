@@ -3,6 +3,7 @@ use crate::{
     Error,
 };
 use memchr::memchr;
+use std::mem;
 
 static IS_INVALID_TAG_NAME_START: [bool; 256] = lut_invalid_tag_name_start();
 const fn lut_invalid_tag_name_start() -> [bool; 256] {
@@ -49,10 +50,10 @@ fn trim(text: &[u8]) -> &[u8] {
         .unwrap_or(b"")
 }
 
-pub struct Reader<'xml> {
+pub struct Reader<'xml, T: ?Sized> {
     // State
     state: ReaderState,
-    source: &'xml [u8],
+    source: &'xml T,
     source_pos: usize,
 
     // Settings
@@ -70,10 +71,21 @@ enum ReaderState {
     End,
 }
 
-impl<'xml> Reader<'xml> {
+impl<'xml, T> Reader<'xml, T> {
     /// Constructs a new [`Reader`] from ASCII-compatible XML bytes.
-    pub const fn new(xml: &'xml [u8]) -> Self {
-        Self {
+    pub const fn new(xml: &'xml [u8]) -> Reader<'xml, [u8]> {
+        Reader {
+            state: ReaderState::Searching,
+            source: xml,
+            source_pos: 0,
+
+            trim: true,
+        }
+    }
+
+    /// Constructs a new [`Reader`] from a UTF-8 string.
+    pub const fn from_str(xml: &'xml str) -> Reader<'xml, str> {
+        Reader {
             state: ReaderState::Searching,
             source: xml,
             source_pos: 0,
@@ -96,8 +108,10 @@ impl<'xml> Reader<'xml> {
     pub fn offset(&self) -> usize {
         self.source_pos
     }
+}
 
-    fn next_search(&mut self) -> Option<Result<Event<'xml>, Error>> {
+impl<'xml> Reader<'xml, [u8]> {
+    fn next_search(&mut self) -> Option<Result<Event<'xml, [u8]>, Error>> {
         let source = sl(self.source, self.source_pos);
         let mut text = match memchr(b'<', source) {
             Some(idx) => {
@@ -122,7 +136,7 @@ impl<'xml> Reader<'xml> {
         }
     }
 
-    fn next_tag(&mut self) -> Option<Result<Event<'xml>, Error>> {
+    fn next_tag(&mut self) -> Option<Result<Event<'xml, [u8]>, Error>> {
         let source = sl(self.source, self.source_pos);
         let first_char = match source.get(0) {
             Some(ch) => ch,
@@ -193,14 +207,26 @@ impl<'xml> Reader<'xml> {
     }
 }
 
-impl<'xml> Iterator for Reader<'xml> {
-    type Item = Result<Event<'xml>, Error>;
+impl<'xml> Iterator for Reader<'xml, [u8]> {
+    type Item = Result<Event<'xml, [u8]>, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.state {
             ReaderState::Searching => self.next_search(),
             ReaderState::LocatedTag => self.next_tag(),
             ReaderState::End => None,
+        }
+    }
+}
+
+impl<'xml> Iterator for Reader<'xml, str> {
+    type Item = Result<Event<'xml, str>, Error>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        // SAFETY: Identical layout, contents, and that's how the standard library does it too.
+        unsafe {
+            mem::transmute(mem::transmute::<_, &mut Reader<'xml, [u8]>>(self).next())
         }
     }
 }
