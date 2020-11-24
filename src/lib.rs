@@ -305,7 +305,7 @@ impl<'xml, T: ?Sized> Text<'xml, T> {
     }
 }
 
-impl<'xml, T> Reader<'xml, T> {
+impl<'xml, T: ?Sized> Reader<'xml, T> {
     /// Enables or disables trimming whitespace in [`Text`] events.
     ///
     /// This property is dynamic and can be turned on and off while parsing.

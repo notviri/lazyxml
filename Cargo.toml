@@ -1,6 +1,6 @@
 [package]
 name = "lazyxml"
-version = "0.0.2"
+version = "0.0.3"
 authors = ["viri <hi@viri.moe>"]
 edition = "2018"
 description = "it's like xml parsing, but bad"
