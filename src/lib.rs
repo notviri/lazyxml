@@ -31,6 +31,11 @@
 //!
 //! If you're looking for the opposite, a standards-compliant low-level XML parser,
 //! I highly recommend [`xmlparser`](https://crates.io/crates/xmlparser).
+//!
+//! # Note
+//! This is rather early in development,
+//! and bangs (!) and processing instructions (?) aren't supported yet.\
+//! So probably don't use this *at all* until it hits 1.0.
 
 #[cfg(feature = "use-memchr")]
 use memchr::memchr;
