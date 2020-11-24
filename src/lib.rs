@@ -32,7 +32,13 @@
 //! If you're looking for the opposite, a standards-compliant low-level XML parser,
 //! I highly recommend [`xmlparser`](https://crates.io/crates/xmlparser).
 
+#[cfg(feature = "use-memchr")]
 use memchr::memchr;
+#[cfg(not(feature = "use-memchr"))]
+fn memchr(needle: u8, haystack: &[u8]) -> Option<usize> {
+    haystack.iter().position(|&x| x == needle)
+}
+
 use std::mem;
 
 static IS_VALID_NAME_START: [bool; 256] = lut_name_start_chars();
