@@ -1,4 +1,38 @@
-use memchr::{memchr, memchr2};
+//! *lazyxml* is a lazy, non-standards-compliant
+//! [XML 1.0](https://www.w3.org/TR/xml/) parser
+//! that ignores every mistake it can afford to.
+//!
+//! # Example
+//! ```rust
+//! for event in lazyxml::Reader::from_str("<Test>hello, world!</Test>") {
+//!     println!("Event: {:?}", event);
+//! }
+//! ```
+//!
+//! # Why would I need this?
+//! This crate was specifically made to ignore the same mistakes that
+//! [ActionScript's XML classes](https://help.adobe.com/en_US/FlashPlatform/reference/actionscript/3/flash/xml/package-detail.html)
+//! were looking past when parsing, for projects compatible with files that also worked
+//! in Adobe AIR, Flash, and any other product using AS3.
+//! This happens to be more or less doing little to no checks, which makes this crate very performant.
+//! As long as the XML is *reasonably valid*, it'll work. Here's an example of a valid empty element tag:
+//!
+//! ```do-not-try-to-highlight-this-please-you-will-die-in-real-life
+//! <Script time="0"a"'"''"'""'''32'34fdhfjsklflsjeje2!!!!!="e"what
+//! ='
+//!    '/>
+//! ```
+//!
+//! The attributes on this tag are parsed as:
+//!
+//! - Key: `time` | Value: `0`
+//! - Key: `a"'"''"'""'''32'34fdhfjsklflsjeje2!!!!!` | Value: `e`
+//! - Key: `what` | Value: `\n   `
+//!
+//! If you're looking for the opposite, a standards-compliant low-level XML parser,
+//! I highly recommend [`xmlparser`](https://crates.io/crates/xmlparser).
+
+use memchr::memchr;
 use std::mem;
 
 static IS_VALID_NAME_START: [bool; 256] = lut_name_start_chars();
@@ -113,7 +147,7 @@ pub struct Text<'xml, T: ?Sized> {
     content: &'xml T,
 }
 
-/// Low level XML reader implemented as an Iterator producing events.
+/// Low level XML reader implemented as an [`Iterator`] producing events.
 ///
 /// See [`Event`] for more information.
 pub struct Reader<'xml, T: ?Sized> {
@@ -197,7 +231,7 @@ impl<'xml> Iterator for AttributeIter<'xml, [u8]> {
         // Trim whitespace around key so a="1" and a = "1" behave the same
         let key = trim_whitespace(sl_to(source, sep_offset));
         if key.is_empty() {
-            return Some(Err(Error::InvalidAttribute(initial_offset)))
+            return Some(Err(Error::InvalidAttribute(initial_offset)));
         }
         self.offset += 1; // move past `=`
 
@@ -221,7 +255,7 @@ impl<'xml> Iterator for AttributeIter<'xml, [u8]> {
                 let value = sl_to(source, end);
                 self.offset += end + 1; // past the closing quote
                 Some(Ok(Attribute::new(key, value)))
-            },
+            }
             None => Some(Err(Error::InvalidAttribute(initial_offset))),
         }
     }
@@ -233,9 +267,7 @@ impl<'xml> Iterator for AttributeIter<'xml, str> {
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         // SAFETY: Identical layout, contents, and that's how the standard library does it too.
-        unsafe {
-            mem::transmute(mem::transmute::<_, &mut AttributeIter<'xml, [u8]>>(self).next())
-        }
+        unsafe { mem::transmute(mem::transmute::<_, &mut AttributeIter<'xml, [u8]>>(self).next()) }
     }
 }
 
@@ -261,7 +293,6 @@ impl<'xml, T: ?Sized> Text<'xml, T> {
         Self { content }
     }
 }
-
 
 impl<'xml, T> Reader<'xml, T> {
     /// Enables or disables trimming whitespace in [`Text`] events.
@@ -301,11 +332,11 @@ impl<'xml> Reader<'xml, [u8]> {
                 self.offset += idx + 1;
                 self.state = ReaderState::LocatedTag;
                 sl_to(source, idx)
-            },
+            }
             None => {
                 self.state = ReaderState::End;
                 source
-            },
+            }
         };
         if self.trim {
             text = trim_whitespace(text);
@@ -360,7 +391,7 @@ impl<'xml> Reader<'xml, [u8]> {
                         if is_end_tag {
                             if head.is_empty() {
                                 // A strange case of `</>` would lead here.
-                                return Some(Err(Error::InvalidName(self.offset - 1)))
+                                return Some(Err(Error::InvalidName(self.offset - 1)));
                             } else {
                                 head = sl(head, 1);
                             }
@@ -380,10 +411,10 @@ impl<'xml> Reader<'xml, [u8]> {
                         } else {
                             Some(Err(Error::InvalidName(self.offset - 1)))
                         }
-                    },
+                    }
                     None => Some(Err(Error::UnexpectedEof)),
                 }
-            },
+            }
         }
     }
 }
@@ -425,9 +456,7 @@ impl<'xml> Iterator for Reader<'xml, str> {
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         // SAFETY: Identical layout, contents, and that's how the standard library does it too.
-        unsafe {
-            mem::transmute(mem::transmute::<_, &mut Reader<'xml, [u8]>>(self).next())
-        }
+        unsafe { mem::transmute(mem::transmute::<_, &mut Reader<'xml, [u8]>>(self).next()) }
     }
 }
 
