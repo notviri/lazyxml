@@ -115,7 +115,7 @@ pub enum Error {
 }
 
 /// Processed XML data, produced by a [`Reader`].
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum Event<'xml, T: ?Sized> {
     /// Processed XML `<Start>` tag.
     Start(Tag<'xml, T>),
@@ -132,28 +132,26 @@ pub enum Event<'xml, T: ?Sized> {
 }
 
 /// Represents an XML tag.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Tag<'xml, T: ?Sized> {
     content: &'xml T,
     name: &'xml T,
 }
 
 /// Iterator over XML attributes.
-#[derive(Clone)]
 pub struct AttributeIter<'xml, T: ?Sized> {
     content: &'xml T,
     offset: usize,
 }
 
 /// Represents an XML attribute.
-#[derive(Debug, Clone)]
 pub struct Attribute<'xml, T: ?Sized> {
     key: &'xml T,
     value: &'xml T,
 }
 
 /// Represents arbitrary text inside or outside of elements.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Text<'xml, T: ?Sized> {
     content: &'xml T,
 }
@@ -209,12 +207,30 @@ impl<'xml, T: ?Sized> Tag<'xml, T> {
     }
 }
 
+impl<'xml, T: ?Sized> Clone for Tag<'xml, T> {
+    fn clone(&self) -> Self {
+        Self {
+            content: self.content,
+            name: self.name,
+        }
+    }
+}
+
 impl<'xml, T: ?Sized> AttributeIter<'xml, T> {
     /// Constructs an attribute iterator over the given content.
     ///
     /// Usually instanced with [`Tag::attributes`], but can be constructed with arbitrary data.
     pub const fn new(content: &'xml T) -> Self {
         Self { content, offset: 0 }
+    }
+}
+
+impl<'xml, T: ?Sized> Clone for AttributeIter<'xml, T> {
+    fn clone(&self) -> Self {
+        Self {
+            content: self.content,
+            offset: self.offset,
+        }
     }
 }
 
@@ -298,10 +314,27 @@ impl<'xml, T: ?Sized> Attribute<'xml, T> {
     }
 }
 
+impl<'xml, T: ?Sized> Clone for Attribute<'xml, T> {
+    fn clone(&self) -> Self {
+        Self {
+            key: self.key,
+            value: self.value,
+        }
+    }
+}
+
 impl<'xml, T: ?Sized> Text<'xml, T> {
     #[inline]
     pub(crate) const fn new(content: &'xml T) -> Self {
         Self { content }
+    }
+}
+
+impl<'xml, T: ?Sized> Clone for Text<'xml, T> {
+    fn clone(&self) -> Self {
+        Self {
+            content: self.content,
+        }
     }
 }
 
